@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>จองคิวคาร์แคร์</title>
-    <!-- โหลด LINE SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; }
@@ -15,13 +14,12 @@
         label { font-weight: bold; display: block; margin-top: 10px; color: #555; }
         input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
         button { width: 100%; background: #00b900; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; margin-top: 20px; cursor: pointer; }
-        button:hover { background: #009900; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <!-- แสดงโปรไฟล์ LINE -->
         <div class="profile">
             <img id="userImg" src="https://via.placeholder.com/50" alt="Profile">
             <div>
@@ -53,12 +51,13 @@
             <label for="bookTime">เวลาที่ต้องการเข้าใช้บริการ</label>
             <input type="datetime-local" id="bookTime" required>
 
-            <button type="submit">ยืนยันการจองคิว</button>
+            <button type="submit" id="submitBtn">ยืนยันการจองคิว</button>
         </form>
     </div>
 
     <script>
-        // เริ่มการทำงาน LINE LIFF
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyrXhusc43a3qqsWkW7RK5lbzyZ-LYGtba9cC9_BjQXfS00ktA2jdHSGwFFcg4uSPrizw/exec";
+
         async function main() {
             await liff.init({ liffId: "2011137854-BwCSq89a" });
             if (liff.isLoggedIn()) {
@@ -71,11 +70,32 @@
         }
         main();
 
-        function submitBooking(e) {
+        async function submitBooking(e) {
             e.preventDefault();
-            const plate = document.getElementById("carPlate").value;
-            const service = document.getElementById("service").value;
-            alert(`จองคิวสำเร็จ!\nทะเบียน: ${plate}\nบริการ: ${service}`);
+            const btn = document.getElementById("submitBtn");
+            btn.innerText = "กำลังบันทึกข้อมูล...";
+            btn.disabled = true;
+
+            const payload = {
+                userName: document.getElementById("userName").innerText,
+                carPlate: document.getElementById("carPlate").value,
+                carType: document.getElementById("carType").value,
+                service: document.getElementById("service").value,
+                bookTime: document.getElementById("bookTime").value
+            };
+
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                });
+                alert("บันทึกการจองคิวเรียบร้อยแล้ว!");
+                liff.closeWindow();
+            } catch (error) {
+                alert("เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง");
+                btn.innerText = "ยืนยันการจองคิว";
+                btn.disabled = false;
+            }
         }
     </script>
 </body>
