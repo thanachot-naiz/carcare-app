@@ -48,8 +48,13 @@
                 <option value="ล้างห้องเครื่อง (500฿)">ล้างห้องเครื่อง (500฿)</option>
             </select>
 
-            <label for="bookTime">เวลาที่ต้องการเข้าใช้บริการ</label>
-            <input type="datetime-local" id="bookTime" required>
+            <label for="bookDate">วันที่ต้องการเข้าใช้บริการ</label>
+            <input type="date" id="bookDate" onchange="updateTimeSlots()" required>
+
+            <label for="bookTimeSlot">เลือกรอบเวลาจอง (เปิด 08:30 - 18:00 น.)</label>
+            <select id="bookTimeSlot" required>
+                <option value="">-- กำลังโหลดรอบเวลา... --</option>
+            </select>
 
             <button type="submit" id="submitBtn">ยืนยันการจองคิว</button>
         </form>
@@ -58,8 +63,20 @@
     <script>
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyrXhusc43a3qqsWkW7RK5lbzyZ-LYGtba9cC9_BjQXfS00ktA2jdHSGwFFcg4uSPrizw/exec";
         let userUserId = "";
+        let bookedTimesList = [];
+
+        // รอบเวลาจองของร้าน (คิวละ 30 นาที)
+        const timeSlots = [
+            "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", 
+            "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", 
+            "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"
+        ];
 
         async function main() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById("bookDate").min = today;
+            document.getElementById("bookDate").value = today;
+
             await liff.init({ liffId: "2011137854-BwCSq89a" });
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
@@ -69,8 +86,43 @@
             } else {
                 liff.login();
             }
+
+            await fetchBookedTimes();
         }
         main();
+
+        async function fetchBookedTimes() {
+            try {
+                const res = await fetch(WEB_APP_URL);
+                const data = await res.json();
+                bookedTimesList = data.bookedTimes || [];
+            } catch (err) {
+                console.log("Error fetching booked times", err);
+            }
+            updateTimeSlots();
+        }
+
+        function updateTimeSlots() {
+            const selectedDate = document.getElementById("bookDate").value;
+            const slotSelect = document.getElementById("bookTimeSlot");
+            slotSelect.innerHTML = "";
+
+            if (!selectedDate) {
+                slotSelect.innerHTML = '<option value="">-- กรุณาเลือกวันที่ก่อน --</option>';
+                return;
+            }
+
+            timeSlots.forEach(time => {
+                const fullDateTimeStr = `${selectedDate} ${time}`;
+                const isBooked = bookedTimesList.includes(fullDateTimeStr);
+                
+                const opt = document.createElement("option");
+                opt.value = fullDateTimeStr;
+                opt.textContent = isBooked ? `${time} น. (เต็มแล้ว ❌)` : `${time} น. (ว่าง)`;
+                if (isBooked) opt.disabled = true;
+                slotSelect.appendChild(opt);
+            });
+        }
 
         async function submitBooking(e) {
             e.preventDefault();
@@ -84,7 +136,7 @@
                 carPlate: document.getElementById("carPlate").value,
                 carType: document.getElementById("carType").value,
                 service: document.getElementById("service").value,
-                bookTime: document.getElementById("bookTime").value
+                bookTime: document.getElementById("bookTimeSlot").value
             };
 
             try {
